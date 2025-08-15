@@ -37,7 +37,9 @@ router.post('/create', verifyToken, async (req, res) => {
       stock,
       status,
       menuId,
-      isRecommend
+      isRecommend,
+      specifications,
+      noSingleDelivery
     } = req.body;
 
     // 验证必填字段
@@ -65,7 +67,9 @@ router.post('/create', verifyToken, async (req, res) => {
       status,
       menuId,
       shopId,
-      isRecommend
+      isRecommend,
+      specifications,
+      noSingleDelivery
     });
 
     const goods = await newGoods.save();
@@ -106,11 +110,12 @@ router.get('/by-shop', verifyToken, async (req, res) => {
     
     // 对每个分类，查询其下的商品
     for (const category of categories) {
-      // 查询该分类下的所有商品
+      // 查询该分类下的所有商品（过滤已软删除的商品）
       const goodsList = await Goods.find({
         shopId,
         menuId: category._id,
-        status
+        status,
+        isDeleted: { $ne: true }
       }).sort('-createTime');
       
       // 添加到结果中
@@ -141,7 +146,10 @@ router.get('/by-shop', verifyToken, async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const goods = await Goods.findById(req.params.id)
+    const goods = await Goods.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true }
+    })
       .populate('menuId', 'name')
       .populate('shopId', 'shopName');
     
@@ -149,7 +157,17 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: '未找到该商品' });
     }
     
-    res.json({ code:200, success: true, data: goods, message: '获取商品详情成功' });
+    // 重构数据结构，拆分 menuId 和 shopId
+    const goodsData = goods.toObject();
+    const responseData = {
+      ...goodsData,
+      menuId: goods.menuId ? goods.menuId._id : null,
+      menuName: goods.menuId ? goods.menuId.name : null,
+      shopId: goods.shopId ? goods.shopId._id : null,
+      shopName: goods.shopId ? goods.shopId.shopName : null
+    };
+    
+    res.json({ code:200, success: true, data: responseData, message: '获取商品详情成功' });
   } catch (error) {
     console.error('获取商品详情失败:', error);
     res.status(500).json({ success: false, message: '服务器错误，获取商品详情失败' });
@@ -173,15 +191,16 @@ router.put('/:id', verifyToken, async (req, res) => {
       stock,
       status,
       menuId,
-      isRecommend
+      isRecommend,
+      noSingleDelivery
     } = req.body;
 
     // 更新时间
     req.body.updateTime = Date.now();
 
-    // 查找并更新商品
-    const goods = await Goods.findByIdAndUpdate(
-      req.params.id,
+    // 查找并更新商品（确保不更新已软删除的商品）
+    const goods = await Goods.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
       { $set: req.body },
       { new: true }
     );
@@ -204,7 +223,16 @@ router.put('/:id', verifyToken, async (req, res) => {
  */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const goods = await Goods.findByIdAndRemove(req.params.id);
+    // 软删除：更新isDeleted字段和deletedAt时间戳（确保不重复删除已软删除的商品）
+    const goods = await Goods.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
+      { 
+        isDeleted: true,
+        deletedAt: new Date(),
+        updateTime: new Date()
+      },
+      { new: true }
+    );
     
     if (!goods) {
       return res.status(404).json({ success: false, message: '未找到该商品' });
@@ -230,8 +258,8 @@ router.put('/:id/status', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: '请提供商品状态' });
     }
     
-    const goods = await Goods.findByIdAndUpdate(
-      req.params.id,
+    const goods = await Goods.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
       { 
         $set: { 
           status,
@@ -266,8 +294,8 @@ router.put('/:id/recommend', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: '请提供推荐状态' });
     }
     
-    const goods = await Goods.findByIdAndUpdate(
-      req.params.id,
+    const goods = await Goods.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
       { 
         $set: { 
           isRecommend,
@@ -290,6 +318,42 @@ router.put('/:id/recommend', verifyToken, async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/goods/:id/delivery
+ * @desc    更新商品单点配送状态
+ * @access  Private
+ */
+router.put('/:id/delivery', verifyToken, async (req, res) => {
+  try {
+    const { noSingleDelivery } = req.body;
+    
+    if (noSingleDelivery === undefined) {
+      return res.status(400).json({ success: false, message: '请提供单点配送状态' });
+    }
+    
+    const goods = await Goods.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
+      { 
+        $set: { 
+          noSingleDelivery,
+          updateTime: Date.now() 
+        } 
+      },
+      { new: true }
+    );
+    
+    if (!goods) {
+      return res.status(404).json({ success: false, message: '未找到该商品' });
+    }
+    
+    const deliveryText = noSingleDelivery ? '设为单点不送' : '允许单点配送';
+    res.json({ code:200, success: true, data: goods, message: `商品${deliveryText}成功` });
+  } catch (error) {
+    console.error('更新商品配送状态失败:', error);
+    res.status(500).json({ success: false, message: '服务器错误，更新商品配送状态失败' });
+  }
+});
+
+/**
  * @route   PUT /api/goods/:id/stock
  * @desc    更新商品库存
  * @access  Private
@@ -302,8 +366,8 @@ router.put('/:id/stock', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: '请提供库存数量' });
     }
     
-    const goods = await Goods.findByIdAndUpdate(
-      req.params.id,
+    const goods = await Goods.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
       { 
         $set: { 
           stock,
@@ -350,8 +414,11 @@ router.get('/shop/all', verifyToken, async (req, res) => {
 
     const shopId = shopAccount.shop._id;
 
-    // 构建查询条件
-    const query = { shopId };
+    // 构建查询条件（过滤已软删除的商品）
+    const query = { 
+      shopId,
+      isDeleted: { $ne: true }
+    };
     
     // 可选的过滤条件
     if (status !== undefined) {

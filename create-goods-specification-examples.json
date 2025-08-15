@@ -1,0 +1,193 @@
+{
+  "examples": [
+    {
+      "description": "服装类商品 - 颜色规格",
+      "data": {
+        "name": "纯棉T恤",
+        "description": "100%纯棉面料，舒适透气，适合春夏季穿着",
+        "price": 89.00,
+        "originalPrice": 128.00,
+        "images": [
+          "https://example.com/images/tshirt1.jpg",
+          "https://example.com/images/tshirt2.jpg"
+        ],
+        "thumbnail": "https://example.com/images/tshirt-thumb.jpg",
+        "stock": 50,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b3",
+        "isRecommend": false,
+        "specifications": [
+          {
+            "name": "颜色",
+            "values": ["白色", "黑色", "灰色", "蓝色"]
+          },
+          {
+            "name": "尺码",
+            "values": ["S", "M", "L", "XL", "XXL"]
+          }
+        ]
+      }
+    },
+    {
+      "description": "食品类商品 - 重量规格",
+      "data": {
+        "name": "精品咖啡豆",
+        "description": "来自埃塞俄比亚的优质阿拉比卡咖啡豆，口感醇厚，香气浓郁",
+        "price": 68.00,
+        "originalPrice": 88.00,
+        "images": [
+          "https://example.com/images/coffee1.jpg"
+        ],
+        "thumbnail": "https://example.com/images/coffee-thumb.jpg",
+        "stock": 100,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b4",
+        "isRecommend": true,
+        "specifications": [
+          {
+            "name": "重量",
+            "values": ["250g", "500g", "1kg"]
+          },
+          {
+            "name": "烘焙度",
+            "values": ["浅烘焙", "中烘焙", "深烘焙"]
+          }
+        ]
+      }
+    },
+    {
+      "description": "电子产品 - 容量规格",
+      "data": {
+        "name": "无线充电器",
+        "description": "支持快速无线充电，兼容多种设备",
+        "price": 199.00,
+        "originalPrice": 299.00,
+        "images": [
+          "https://example.com/images/charger1.jpg"
+        ],
+        "thumbnail": "https://example.com/images/charger-thumb.jpg",
+        "stock": 30,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b5",
+        "isRecommend": true,
+        "specifications": [
+          {
+            "name": "功率",
+            "values": ["10W", "15W", "20W"]
+          },
+          {
+            "name": "颜色",
+            "values": ["黑色", "白色"]
+          }
+        ]
+      }
+    },
+    {
+      "description": "饮品类商品 - 口味规格",
+      "data": {
+        "name": "手工奶茶",
+        "description": "现调现制，选用优质茶叶和新鲜牛奶",
+        "price": 18.00,
+        "originalPrice": 25.00,
+        "images": [
+          "https://example.com/images/milktea1.jpg"
+        ],
+        "thumbnail": "https://example.com/images/milktea-thumb.jpg",
+        "stock": 999,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b6",
+        "isRecommend": false,
+        "specifications": [
+          {
+            "name": "口味",
+            "values": ["原味", "草莓味", "巧克力味", "抹茶味"]
+          },
+          {
+            "name": "甜度",
+            "values": ["微糖", "半糖", "全糖"]
+          },
+          {
+            "name": "温度",
+            "values": ["冰饲", "常温", "热饲"]
+          }
+        ]
+      }
+    },
+    {
+      "description": "鞋类商品 - 尺码规格",
+      "data": {
+        "name": "运动鞋",
+        "description": "舒适透气的运动鞋，适合日常运动和休闲穿着",
+        "price": 299.00,
+        "originalPrice": 399.00,
+        "images": [
+          "https://example.com/images/shoes1.jpg"
+        ],
+        "thumbnail": "https://example.com/images/shoes-thumb.jpg",
+        "stock": 80,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b8",
+        "isRecommend": true,
+        "specifications": [
+          {
+            "name": "尺码",
+            "values": ["36", "37", "38", "39", "40", "41", "42", "43"]
+          },
+          {
+            "name": "颜色",
+            "values": ["黑色", "白色", "红色", "蓝色"]
+          }
+        ]
+      }
+    },
+    {
+      "description": "手机类商品 - 三规格组合（存储容量+颜色+网络制式）",
+      "data": {
+        "name": "智能手机",
+        "description": "最新款智能手机，拍照清晰，性能强劲",
+        "price": 3999.00,
+        "originalPrice": 4999.00,
+        "images": [
+          "https://example.com/images/phone1.jpg"
+        ],
+        "thumbnail": "https://example.com/images/phone-thumb.jpg",
+        "stock": 200,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b9",
+        "isRecommend": true,
+        "specifications": [
+          {
+            "name": "存储容量",
+            "values": ["128GB", "256GB", "512GB"]
+          },
+          {
+            "name": "颜色",
+            "values": ["深空灰", "银色", "金色", "蓝色"]
+          },
+          {
+            "name": "网络制式",
+            "values": ["4G版", "5G版"]
+          }
+        ]
+      }
+    },
+    {
+      "description": "无规格商品示例",
+      "data": {
+        "name": "通用商品",
+        "description": "这是一个没有特定规格的商品",
+        "price": 50.00,
+        "originalPrice": 80.00,
+        "images": [
+          "https://example.com/images/general1.jpg"
+        ],
+        "thumbnail": "https://example.com/images/general-thumb.jpg",
+        "stock": 20,
+        "status": 1,
+        "menuId": "60f7b3b3b3b3b3b3b3b3b3b7",
+        "isRecommend": false,
+        "specifications": []
+      }
+    }
+  ]
+}

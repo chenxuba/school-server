@@ -53,6 +53,22 @@ const GoodsSchema = new Schema({
     type: Boolean,
     default: false
   },
+  // 单点不送标记
+  noSingleDelivery: {
+    type: Boolean,
+    default: false
+  },
+  // 多规格信息
+  specifications: [{
+    name: {
+      type: String,
+      required: true  // 规格名称，如：颜色、尺寸、口味等
+    },
+    values: [{
+      type: String,
+      required: true
+    }]  // 规格值数组，如：['红色', '蓝色', '白色'] 或 ['S', 'M', 'L', 'XL']
+  }],
   createTime: {
     type: Date,
     default: Date.now
@@ -60,6 +76,15 @@ const GoodsSchema = new Schema({
   updateTime: {
     type: Date,
     default: Date.now
+  },
+  // 软删除字段
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date,
+    default: null
   }
 });
 
