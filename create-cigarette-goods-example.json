@@ -1,0 +1,16 @@
+{
+  "name": "中华（软盒）",
+  "description": "中华牌香烟，经典软盒装，口感醇和，香气浓郁。采用优质烟叶精制而成，是商务人士的首选品牌。",
+  "price": 65.00,
+  "originalPrice": 65.00,
+  "images": [
+    "https://example.com/images/zhonghua-soft-1.jpg",
+    "https://example.com/images/zhonghua-soft-2.jpg",
+    "https://example.com/images/zhonghua-soft-3.jpg"
+  ],
+  "thumbnail": "https://example.com/images/zhonghua-soft-thumb.jpg",
+  "stock": 200,
+  "status": 1,
+  "menuId": "60f7b3b3b3b3b3b3b3b3b3b4",
+  "isRecommend": true
+}

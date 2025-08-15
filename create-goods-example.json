@@ -1,0 +1,16 @@
+{
+  "name": "精品咖啡豆",
+  "description": "来自埃塞俄比亚的优质阿拉比卡咖啡豆，口感醇厚，香气浓郁。适合手冲、意式咖啡制作。",
+  "price": 68.00,
+  "originalPrice": 88.00,
+  "images": [
+    "https://example.com/images/coffee1.jpg",
+    "https://example.com/images/coffee2.jpg",
+    "https://example.com/images/coffee3.jpg"
+  ],
+  "thumbnail": "https://example.com/images/coffee-thumb.jpg",
+  "stock": 100,
+  "status": 1,
+  "menuId": "60f7b3b3b3b3b3b3b3b3b3b3",
+  "isRecommend": true
+}

@@ -1,0 +1,24 @@
+{
+  "shopName": "美味小厨房",
+  "description": "专注于提供新鲜美味的家常菜，选用优质食材，为您带来家的味道。我们致力于为顾客提供健康、营养、美味的餐饮体验。",
+  "logo": "https://example.com/uploads/logos/shop-logo.jpg",
+  "banners": [
+    "https://example.com/uploads/banners/banner1.jpg",
+    "https://example.com/uploads/banners/banner2.jpg",
+    "https://example.com/uploads/banners/banner3.jpg"
+  ],
+  "businessLicense": "https://example.com/uploads/licenses/business-license.pdf",
+  "businessHours": {
+    "open": "08:00",
+    "close": "22:00"
+  },
+  "businessStatus": "1",
+  "address": "北京市朝阳区三里屯街道工体北路8号院",
+  "contactPhone": "13800138000",
+  "contactWechat": "wechat_shop_001",
+  "username": "meiweixiaochu",
+  "email": "owner@meiweixiaochu.com",
+  "ownerName": "张小厨",
+  "password": "123456"
+}
+

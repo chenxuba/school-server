@@ -1,0 +1,123 @@
+{
+  "examples": {
+    "一级分类示例": {
+      "name": "饮品",
+      "description": "各种饮料和茶类",
+      "level": 1,
+      "sort": 1
+    },
+    "二级分类示例": {
+      "name": "奶茶",
+      "description": "各种口味的奶茶",
+      "parentId": "父分类的ObjectId",
+      "level": 2,
+      "sort": 1
+    },
+    "最简示例": {
+      "name": "小食"
+    },
+    "完整参数示例": {
+      "name": "主食",
+      "description": "米饭、面条等主食类",
+      "parentId": null,
+      "level": 1,
+      "sort": 5
+    }
+  },
+  "字段说明": {
+    "name": "分类名称 (必填)",
+    "description": "分类描述 (可选)",
+    "parentId": "父分类ID，一级分类传null或不传 (可选)",
+    "level": "分类层级，默认为1 (可选)",
+    "sort": "排序号，数字越小越靠前，默认为0 (可选)"
+  },
+  "请求示例": {
+    "url": "POST /api/goodsmenu/add",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "your_jwt_token_here"
+    },
+    "body": {
+      "name": "热饮",
+      "description": "咖啡、热茶等热饮类",
+      "level": 1,
+      "sort": 2
+    }
+  },
+  "常见分类结构示例": [
+    {
+      "name": "饮品",
+      "description": "各种饮料",
+      "level": 1,
+      "sort": 1,
+      "children": [
+        {
+          "name": "奶茶",
+          "description": "各种奶茶",
+          "level": 2,
+          "sort": 1
+        },
+        {
+          "name": "咖啡",
+          "description": "各种咖啡",
+          "level": 2,
+          "sort": 2
+        },
+        {
+          "name": "果汁",
+          "description": "鲜榨果汁",
+          "level": 2,
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "name": "小食",
+      "description": "各种小食和零食",
+      "level": 1,
+      "sort": 2,
+      "children": [
+        {
+          "name": "蛋糕",
+          "description": "各种蛋糕甜品",
+          "level": 2,
+          "sort": 1
+        },
+        {
+          "name": "面包",
+          "description": "各种面包",
+          "level": 2,
+          "sort": 2
+        }
+      ]
+    },
+    {
+      "name": "主食",
+      "description": "正餐主食类",
+      "level": 1,
+      "sort": 3,
+      "children": [
+        {
+          "name": "米饭类",
+          "description": "各种米饭套餐",
+          "level": 2,
+          "sort": 1
+        },
+        {
+          "name": "面条类",
+          "description": "各种面条",
+          "level": 2,
+          "sort": 2
+        }
+      ]
+    }
+  ],
+  "注意事项": [
+    "shopId 不需要传递，系统会自动从token中获取",
+    "创建二级分类时，需要先创建父分类并获取其ID",
+    "parentId 应该是已存在的分类的ObjectId",
+    "name 字段是必填的，不能为空",
+    "level 和 sort 如果不传会使用默认值",
+    "请求时需要在header中携带有效的JWT token"
+  ]
+}
