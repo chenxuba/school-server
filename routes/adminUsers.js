@@ -106,7 +106,11 @@ router.post('/getInfo', (req, res) => {
 
 })
 
-router.get('/test',(req,res)=>{
-    res.send("test")
+router.post('/test',(req,res)=>{
+    res.json({
+        code:200,
+        success:true,
+        message:"测试成功"
+    })
 })
 module.exports = router;

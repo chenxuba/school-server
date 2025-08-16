@@ -27,6 +27,7 @@ mongoose.connect(db, {
     });
 
 var usersRouter = require('./routes/adminUsers.js');
+var userRouter = require('./routes/user');
 var upload = require("./routes/upload");
 var shopRouter = require('./routes/shop');
 var shopAccountRouter = require('./routes/shopAccount');
@@ -62,6 +63,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/admin', usersRouter);
+app.use('/api/user', userRouter);
 app.use('/api', upload);
 app.use('/api/shop', shopRouter);
 app.use('/api/shopAccount', shopAccountRouter);
