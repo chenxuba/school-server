@@ -296,19 +296,43 @@ router.post("/create", async (req, res) => {
 
 /**
  * @route GET api/shop
- * @desc 获取所有店铺
+ * @desc 获取店铺列表，支持按shopName、校区id、营业状态筛选
  * @access Public
+ * @query shopName - 店铺名称（模糊查询）
+ * @query campus - 校区ID
+ * @query businessStatus - 营业状态（1-营业中，2-暂停营业）
  */
 router.get("/", async (req, res) => {
   try {
-    const shops = await Shop.find()
+    const { shopName, campus,campusId, businessStatus } = req.query;
+    
+    // 构建查询条件
+    let query = {};
+    
+    // 按店铺名称模糊查询
+    if (shopName) {
+      query.shopName = { $regex: shopName, $options: 'i' };
+    }
+    
+    // 按校区ID查询
+    if (campusId) {
+      query.campus = campusId;
+    }
+    
+    // 按营业状态查询
+    if (businessStatus) {
+      query.businessStatus = businessStatus;
+    }
+    
+    const shops = await Shop.find(query)
       .populate('campus', 'campusName address location status')
       .populate('owner', 'username ownerName email phone')
       .sort({ date: -1 });
+      
     res.json({
-      code:200,
-      msg:"店铺获取成功",
-      data:shops
+      code: 200,
+      msg: "店铺获取成功",
+      data: shops
     });
   } catch (err) {
     console.error(err.message);
