@@ -45,6 +45,21 @@ const shopSchema = new Schema({
   address: {
     type: String,
   },
+  // 经纬度
+  location: {
+    longitude: {
+      type: Number,
+    },
+    latitude: {
+      type: Number,
+    },
+  },
+  // 关联校区
+  campus: {
+    type: Schema.Types.ObjectId,
+    ref: "Campus",
+    required: true,
+  },
   // 联系方式
   contactPhone: {
     type: String,

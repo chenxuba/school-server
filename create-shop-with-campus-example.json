@@ -1,0 +1,27 @@
+{
+  "shopName": "校园咖啡厅",
+  "description": "提供精品咖啡和轻食的校园咖啡厅",
+  "logo": "https://example.com/logo.jpg",
+  "banners": [
+    "https://example.com/banner1.jpg",
+    "https://example.com/banner2.jpg"
+  ],
+  "businessLicense": "BL123456789",
+  "businessHours": {
+    "open": "08:00",
+    "close": "22:00"
+  },
+  "businessStatus": "1",
+  "address": "北京校区一号楼一层",
+  "location": {
+    "longitude": 116.4075,
+    "latitude": 39.9043
+  },
+  "campusId": "校区的ObjectId",
+  "contactPhone": "13800138000",
+  "contactWechat": "coffee_shop_wechat",
+  "username": "coffee_admin",
+  "email": "coffee@example.com",
+  "ownerName": "李四",
+  "password": "123456"
+}

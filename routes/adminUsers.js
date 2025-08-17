@@ -50,8 +50,8 @@ router.post('/login', (req, res) => {
     const username = req.body.username;
     const password = md5(req.body.password);
     if (username == '') {
-        res.json({
-            code: -1,
+        res.status(404).json({
+            code: 404,
             message: '用户名不能为空'
         })
         return false
@@ -59,28 +59,30 @@ router.post('/login', (req, res) => {
 
     AdminUser.find({ username: username }, (err, users) => {
         if (users.length === 0) {
-            res.json({
-                code: -1,
-                message: '该用户不存在'
+            res.status(403).json({
+                code: 403,
+                message: '账户密码错误'
             });
         } else if (users[0].password === password) {
             vertoken.setToken(users[0]._id, users[0].username, users[0].huixinCode, users[0].nickname, users[0].avatar).then((token) => {
-                res.json({
+                res.status(200).json({
                     code: 200,
-                    token: token,
+                    data:{
+                        token: token
+                    },
                     message: '登录成功'
                 })
             })
         } else if (users[0].password !== password) {
-            res.json({
-                code: -1,
+            res.status(404).json({
+                code: 404,
                 message: '用户名或密码错误'
             });
         }
     });
 })
 //获取用户信息
-router.post('/getInfo', (req, res) => {
+router.get('/getInfo', (req, res) => {
     vertoken.getToken(req.headers.authorization).then((data) => {
         AdminUser.find({ _id: data._id }, (err, users) => {
             if (users.length === 0) {

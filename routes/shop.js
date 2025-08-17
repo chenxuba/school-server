@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const md5 = require("blueimp-md5");
 const Shop = require("../models/Shop");
 const ShopAccount = require("../models/ShopAccount");
+const Campus = require("../models/Campus");
 
 /**
  * Helper function to check if current time is within shop business hours
@@ -71,6 +72,8 @@ router.post("/create", async (req, res) => {
       businessHours,
       businessStatus,
       address,
+      location, // 经纬度信息
+      campusId, // 校区ID
       contactPhone,
       contactWechat,
       // 商家账号信息
@@ -113,6 +116,29 @@ router.post("/create", async (req, res) => {
       return res.status(400).json({ 
         code: 400, 
         msg: "联系电话不能为空" 
+      });
+    }
+    
+    if (!campusId) {
+      return res.status(400).json({ 
+        code: 400, 
+        msg: "校区ID不能为空" 
+      });
+    }
+    
+    // 验证校区是否存在且启用
+    const campus = await Campus.findById(campusId);
+    if (!campus) {
+      return res.status(400).json({
+        code: 400,
+        msg: "校区不存在"
+      });
+    }
+    
+    if (campus.status !== "1") {
+      return res.status(400).json({
+        code: 400,
+        msg: "校区已禁用，无法创建店铺"
       });
     }
 
@@ -179,6 +205,15 @@ router.post("/create", async (req, res) => {
     
     // 位置信息
     if (address) shopFields.address = address;
+    if (location && location.longitude && location.latitude) {
+      shopFields.location = {
+        longitude: location.longitude,
+        latitude: location.latitude
+      };
+    }
+    
+    // 校区关联
+    shopFields.campus = campusId;
     
     // 联系方式
     shopFields.contactPhone = contactPhone;
@@ -266,7 +301,10 @@ router.post("/create", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const shops = await Shop.find().sort({ date: -1 });
+    const shops = await Shop.find()
+      .populate('campus', 'campusName address location status')
+      .populate('owner', 'username ownerName email phone')
+      .sort({ date: -1 });
     res.json({
       code:200,
       msg:"店铺获取成功",
@@ -274,7 +312,10 @@ router.get("/", async (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send("服务器错误");
+    res.status(500).json({
+      code: 500,
+      msg: "服务器错误"
+    });
   }
 });
 
@@ -285,10 +326,15 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
-    const shop = await Shop.findById(req.params.id);
+    const shop = await Shop.findById(req.params.id)
+      .populate('campus', 'campusName address location status')
+      .populate('owner', 'username ownerName email phone');
     
     if (!shop) {
-      return res.status(404).json({ msg: "店铺不存在" });
+      return res.status(404).json({ 
+        code: 404,
+        msg: "店铺不存在" 
+      });
     }
     
     res.json({
@@ -299,9 +345,62 @@ router.get("/:id", async (req, res) => {
   } catch (err) {
     console.error(err.message);
     if (err.kind === "ObjectId") {
-      return res.status(404).json({ msg: "店铺不存在" });
+      return res.status(404).json({ 
+        code: 404,
+        msg: "店铺不存在" 
+      });
     }
-    res.status(500).send("服务器错误");
+    res.status(500).json({
+      code: 500,
+      msg: "服务器错误"
+    });
+  }
+});
+
+/**
+ * @route GET api/shop/campus/:campusId
+ * @desc 根据校区ID获取店铺列表
+ * @access Public
+ */
+router.get("/campus/:campusId", async (req, res) => {
+  try {
+    const { campusId } = req.params;
+    
+    // 验证校区是否存在
+    const campus = await Campus.findById(campusId);
+    if (!campus) {
+      return res.status(404).json({
+        code: 404,
+        msg: "校区不存在"
+      });
+    }
+    
+    const shops = await Shop.find({ campus: campusId })
+      .populate('campus', 'campusName address location status')
+      .populate('owner', 'username ownerName email phone')
+      .sort({ date: -1 });
+    
+    res.json({
+      code: 200,
+      msg: "校区店铺获取成功",
+      data: {
+        campus: campus,
+        shops: shops,
+        total: shops.length
+      }
+    });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ 
+        code: 404,
+        msg: "校区不存在" 
+      });
+    }
+    res.status(500).json({
+      code: 500,
+      msg: "服务器错误"
+    });
   }
 });
 
@@ -321,6 +420,8 @@ router.put("/:id", async (req, res) => {
       businessHours,
       businessStatus,
       address,
+      location,
+      campusId,
       contactPhone,
       contactWechat
     } = req.body;
@@ -345,6 +446,33 @@ router.put("/:id", async (req, res) => {
     
     // 位置信息
     if (address) shopFields.address = address;
+    if (location && location.longitude && location.latitude) {
+      shopFields.location = {
+        longitude: location.longitude,
+        latitude: location.latitude
+      };
+    }
+    
+    // 校区关联
+    if (campusId) {
+      // 验证校区是否存在且启用
+      const campus = await Campus.findById(campusId);
+      if (!campus) {
+        return res.status(400).json({
+          code: 400,
+          msg: "校区不存在"
+        });
+      }
+      
+      if (campus.status !== "1") {
+        return res.status(400).json({
+          code: 400,
+          msg: "校区已禁用，无法关联"
+        });
+      }
+      
+      shopFields.campus = campusId;
+    }
 
     // 联系方式
     if (contactPhone) shopFields.contactPhone = contactPhone;
