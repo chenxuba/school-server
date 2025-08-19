@@ -34,6 +34,7 @@ var shopAccountRouter = require('./routes/shopAccount');
 var goodsMenuRouter = require('./routes/goodsMenu');
 var goodsRouter = require('./routes/goods');
 var campusRouter = require('./routes/campus');
+var tagRouter = require('./routes/tag');
 
 
 var app = express();
@@ -71,6 +72,7 @@ app.use('/api/shopAccount', shopAccountRouter);
 app.use('/api/goodsmenu', goodsMenuRouter);
 app.use('/api/goods', goodsRouter);
 app.use('/api/campus', campusRouter);
+app.use('/api/tag', tagRouter);
 
 
 // catch 404 and forward to error handler

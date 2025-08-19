@@ -1,6 +1,8 @@
 var express = require('express');
 var router = express.Router();
 const User = require("../models/User");
+const DeliveryApplication = require("../models/DeliveryApplication");
+const Campus = require("../models/Campus");
 const { getWxUserInfo, decryptWxData, generateInviteCode, generateRandomNickname } = require('../utils/index');
 var vertoken = require('../utils/token');
 
@@ -105,10 +107,21 @@ router.post('/phone-login', async (req, res) => {
       user._id,
       user.openid,
       user.nickname,
-      user.avatar
+      user.avatar,
+      user.defaultCampus
     );
     
     // 5. 返回用户信息
+    let defaultCampusName = null;
+    if (user.defaultCampus) {
+      try {
+        const campus = await Campus.findById(user.defaultCampus);
+        if (campus) {
+          defaultCampusName = campus.campusName;
+        }
+      } catch (e) {}
+    }
+
     const userInfo = {
       _id: user._id,
       openid: user.openid,
@@ -116,6 +129,8 @@ router.post('/phone-login', async (req, res) => {
       nickname: user.nickname,
       avatar: user.avatar,
       gender: user.gender,
+      defaultCampus: user.defaultCampus,
+      defaultCampusName: defaultCampusName,
       inviteCode: user.inviteCode,
       createTime: user.createTime,
       isDelivery: user.isDelivery,
@@ -194,9 +209,20 @@ router.post('/update-profile', async (req, res) => {
       user._id,
       user.openid,
       user.nickname,
-      user.avatar
+      user.avatar,
+      user.defaultCampus
     );
     
+    let defaultCampusName = null;
+    if (user.defaultCampus) {
+      try {
+        const campus = await Campus.findById(user.defaultCampus);
+        if (campus) {
+          defaultCampusName = campus.campusName;
+        }
+      } catch (e) {}
+    }
+
     const userInfo = {
       _id: user._id,
       openid: user.openid,
@@ -204,6 +230,8 @@ router.post('/update-profile', async (req, res) => {
       nickname: user.nickname,
       avatar: user.avatar,
       gender: user.gender,
+      defaultCampus: user.defaultCampus,
+      defaultCampusName: defaultCampusName,
       inviteCode: user.inviteCode,
       createTime: user.createTime,
       isDelivery: user.isDelivery,
@@ -257,7 +285,8 @@ router.post('/info', async (req, res) => {
       user._id,
       user.openid,
       user.nickname,
-      user.avatar
+      user.avatar,
+      user.defaultCampus
     );
     
     const userInfo = {
@@ -267,6 +296,7 @@ router.post('/info', async (req, res) => {
       nickname: user.nickname,
       avatar: user.avatar,
       gender: user.gender,
+      defaultCampus: user.defaultCampus,
       inviteCode: user.inviteCode,
       createTime: user.createTime,
       isDelivery: user.isDelivery,
@@ -333,4 +363,518 @@ router.get('/invite/:code', async (req, res) => {
   }
 });
 
+/**
+ * 申请成为配送员接口
+ * POST /api/user/apply-delivery
+ * 
+ * 请求参数:
+ * - realName: 真实姓名
+ * - idNumber: 身份证号
+ * - studentNumber: 学号
+ * - phone: 手机号
+ * - idCardFrontUrl: 身份证正面照片URL
+ * - idCardBackUrl: 身份证反面照片URL
+ */
+router.post('/apply-delivery', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const { realName, idNumber, studentNumber, phone, idCardFrontUrl, idCardBackUrl } = req.body;
+    
+    // 参数验证
+    if (!realName || !idNumber || !studentNumber || !phone || !idCardFrontUrl || !idCardBackUrl) {
+      return res.json({
+        code: -1,
+        message: '所有字段都是必填的'
+      });
+    }
+    
+    // 验证身份证号格式（简单验证）
+    const idNumberRegex = /^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/;
+    if (!idNumberRegex.test(idNumber)) {
+      return res.json({
+        code: -1,
+        message: '身份证号格式不正确'
+      });
+    }
+    
+    // 验证手机号格式
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.json({
+        code: -1,
+        message: '手机号格式不正确'
+      });
+    }
+    
+    // 检查是否已经有待审核的配送员申请
+    const existingApplication = await DeliveryApplication.findOne({
+      userId: userId,
+      applicationType: 'delivery',
+      status: 'pending'
+    });
+    
+    if (existingApplication) {
+      return res.json({
+        code: -1,
+        message: '您已有待审核的配送员申请，请勿重复提交'
+      });
+    }
+    
+    // 检查是否已经是配送员
+    const user = await User.findById(userId);
+    if (user.isDelivery) {
+      return res.json({
+        code: -1,
+        message: '您已经是配送员了'
+      });
+    }
+    
+    // 创建申请记录
+    const application = new DeliveryApplication({
+      userId: userId,
+      applicationType: 'delivery',
+      realName: realName,
+      idNumber: idNumber,
+      studentNumber: studentNumber,
+      phone: phone,
+      idCardFrontUrl: idCardFrontUrl,
+      idCardBackUrl: idCardBackUrl
+    });
+    
+    await application.save();
+    
+    res.json({
+      code: 200,
+      message: '配送员申请提交成功，请等待审核',
+      data: {
+        applicationId: application._id,
+        status: application.status,
+        createTime: application.createTime
+      }
+    });
+    
+  } catch (error) {
+    if (error.error) {
+      return res.json({
+        code: 401,
+        message: 'token失效了'
+      });
+    }
+    
+    console.error('申请配送员错误:', error);
+    res.json({
+      code: -1,
+      message: '服务器错误: ' + error.message
+    });
+  }
+});
+
+/**
+ * 申请成为接单员接口
+ * POST /api/user/apply-receiver
+ * 
+ * 请求参数:
+ * - realName: 真实姓名
+ * - idNumber: 身份证号
+ * - studentNumber: 学号
+ * - phone: 手机号
+ * - idCardFrontUrl: 身份证正面照片URL
+ * - idCardBackUrl: 身份证反面照片URL
+ */
+router.post('/apply-receiver', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const { realName, idNumber, studentNumber, phone, idCardFrontUrl, idCardBackUrl } = req.body;
+    
+    // 参数验证
+    if (!realName || !idNumber || !studentNumber || !phone || !idCardFrontUrl || !idCardBackUrl) {
+      return res.json({
+        code: -1,
+        message: '所有字段都是必填的'
+      });
+    }
+    
+    // 验证身份证号格式（简单验证）
+    const idNumberRegex = /^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/;
+    if (!idNumberRegex.test(idNumber)) {
+      return res.json({
+        code: -1,
+        message: '身份证号格式不正确'
+      });
+    }
+    
+    // 验证手机号格式
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.json({
+        code: -1,
+        message: '手机号格式不正确'
+      });
+    }
+    
+    // 检查是否已经有待审核的接单员申请
+    const existingApplication = await DeliveryApplication.findOne({
+      userId: userId,
+      applicationType: 'receiver',
+      status: 'pending'
+    });
+    
+    if (existingApplication) {
+      return res.json({
+        code: -1,
+        message: '您已有待审核的接单员申请，请勿重复提交'
+      });
+    }
+    
+    // 检查是否已经是接单员
+    const user = await User.findById(userId);
+    if (user.isReceiver) {
+      return res.json({
+        code: -1,
+        message: '您已经是接单员了'
+      });
+    }
+    
+    // 创建申请记录
+    const application = new DeliveryApplication({
+      userId: userId,
+      applicationType: 'receiver',
+      realName: realName,
+      idNumber: idNumber,
+      studentNumber: studentNumber,
+      phone: phone,
+      idCardFrontUrl: idCardFrontUrl,
+      idCardBackUrl: idCardBackUrl
+    });
+    
+    await application.save();
+    
+    res.json({
+      code: 200,
+      message: '接单员申请提交成功，请等待审核',
+      data: {
+        applicationId: application._id,
+        status: application.status,
+        createTime: application.createTime
+      }
+    });
+    
+  } catch (error) {
+    if (error.error) {
+      return res.json({
+        code: 401,
+        message: 'token失效了'
+      });
+    }
+    
+    console.error('申请接单员错误:', error);
+    res.json({
+      code: -1,
+      message: '服务器错误: ' + error.message
+    });
+  }
+});
+
+/**
+ * 查询申请状态接口
+ * POST /api/user/application-status
+ * 
+ * 请求参数:
+ * - applicationType: 申请类型 (delivery | receiver)
+ */
+router.post('/application-status', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const { applicationType } = req.body;
+    
+    if (!applicationType || !['delivery', 'receiver'].includes(applicationType)) {
+      return res.json({
+        code: -1,
+        message: '申请类型参数错误'
+      });
+    }
+    
+    // 查询最新的申请记录
+    const application = await DeliveryApplication.findOne({
+      userId: userId,
+      applicationType: applicationType
+    }).sort({ createTime: -1 });
+    
+    if (!application) {
+      return res.json({
+        code: 200,
+        message: '查询成功',
+        data: {
+          hasApplication: false,
+          status: null
+        }
+      });
+    }
+    
+    res.json({
+      code: 200,
+      message: '查询成功',
+      data: {
+        hasApplication: true,
+        applicationId: application._id,
+        status: application.status,
+        reviewComment: application.reviewComment,
+        createTime: application.createTime,
+        reviewTime: application.reviewTime
+      }
+    });
+    
+  } catch (error) {
+    if (error.error) {
+      return res.json({
+        code: 401,
+        message: 'token失效了'
+      });
+    }
+    
+    console.error('查询申请状态错误:', error);
+    res.json({
+      code: -1,
+      message: '服务器错误: ' + error.message
+    });
+  }
+});
+
+/**
+ * 获取用户申请列表接口
+ * POST /api/user/my-applications
+ */
+router.post('/my-applications', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    // 查询用户的所有申请记录
+    const applications = await DeliveryApplication.find({
+      userId: userId
+    }).sort({ createTime: -1 });
+    
+    const formattedApplications = applications.map(app => ({
+      applicationId: app._id,
+      applicationType: app.applicationType,
+      realName: app.realName,
+      studentNumber: app.studentNumber,
+      phone: app.phone,
+      status: app.status,
+      reviewComment: app.reviewComment,
+      createTime: app.createTime,
+      reviewTime: app.reviewTime
+    }));
+    
+    res.json({
+      code: 200,
+      message: '查询成功',
+      data: formattedApplications
+    });
+    
+  } catch (error) {
+    if (error.error) {
+      return res.json({
+        code: 401,
+        message: 'token失效了'
+      });
+    }
+    
+    console.error('查询申请列表错误:', error);
+    res.json({
+      code: -1,
+      message: '服务器错误: ' + error.message
+    });
+  }
+});
+
+/**
+ * 绑定默认校区
+ * POST /api/user/bind-default-campus
+ * body: { campusId }
+ */
+router.post('/bind-default-campus', async (req, res) => {
+  try {
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+
+    const { campusId } = req.body;
+    if (!campusId) {
+      return res.json({
+        code: -1,
+        message: '参数不完整: 缺少campusId'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.json({
+        code: -1,
+        message: '用户不存在'
+      });
+    }
+
+    if (user.defaultCampus) {
+      return res.json({
+        code: -1,
+        message: '已绑定默认校区，如需修改请使用修改接口'
+      });
+    }
+
+    const campus = await Campus.findById(campusId);
+    if (!campus) {
+      return res.json({
+        code: -1,
+        message: '校区不存在'
+      });
+    }
+    if (campus.status !== '1') {
+      return res.json({
+        code: -1,
+        message: '校区未启用，无法绑定'
+      });
+    }
+
+    user.defaultCampus = campus._id;
+    user.updateTime = new Date();
+    await user.save();
+
+    // 重新生成包含默认校区的 token
+    const token = await vertoken.setToken(
+      user._id,
+      user.openid,
+      user.nickname,
+      user.avatar,
+      user.defaultCampus
+    );
+
+    return res.json({
+      code: 200,
+      message: '默认校区绑定成功',
+      data: {
+        userId: user._id,
+        defaultCampus: user.defaultCampus,
+        token: token
+      }
+    });
+  } catch (error) {
+    if (error.error) {
+      return res.json({
+        code: 401,
+        message: 'token失效了'
+      });
+    }
+    console.error('绑定默认校区错误:', error);
+    return res.json({
+      code: -1,
+      message: '服务器错误: ' + error.message
+    });
+  }
+});
+
+/**
+ * 修改默认校区
+ * POST /api/user/update-default-campus
+ * body: { campusId }
+ */
+router.post('/update-default-campus', async (req, res) => {
+  try {
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    console.log(tokenData);
+    
+    const { campusId } = req.body;
+    if (!campusId) {
+      return res.json({
+        code: -1,
+        message: '参数不完整: 缺少campusId'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.json({
+        code: -1,
+        message: '用户不存在'
+      });
+    }
+
+    if (!user.defaultCampus) {
+      return res.json({
+        code: -1,
+        message: '尚未绑定默认校区，请先绑定'
+      });
+    }
+
+    if (String(user.defaultCampus) === String(campusId)) {
+      return res.json({
+        code: 200,
+        message: '默认校区未变化',
+        data: {
+          userId: user._id,
+          defaultCampus: user.defaultCampus
+        }
+      });
+    }
+
+    const campus = await Campus.findById(campusId);
+    if (!campus) {
+      return res.json({
+        code: -1,
+        message: '校区不存在'
+      });
+    }
+    if (campus.status !== '1') {
+      return res.json({
+        code: -1,
+        message: '校区未启用，无法设置为默认'
+      });
+    }
+
+    user.defaultCampus = campus._id;
+    user.updateTime = new Date();
+    await user.save();
+
+    // 重新生成包含默认校区的 token
+    const token = await vertoken.setToken(
+      user._id,
+      user.openid,
+      user.nickname,
+      user.avatar,
+      user.defaultCampus
+    );
+
+    return res.json({
+      code: 200,
+      message: '默认校区更新成功',
+      data: {
+        userId: user._id,
+        defaultCampus: user.defaultCampus,
+        token: token
+      }
+    });
+  } catch (error) {
+    if (error.error) {
+      return res.json({
+        code: 401,
+        message: 'token失效了'
+      });
+    }
+    console.error('更新默认校区错误:', error);
+    return res.json({
+      code: -1,
+      message: '服务器错误: ' + error.message
+    });
+  }
+});
 module.exports = router;

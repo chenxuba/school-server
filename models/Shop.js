@@ -72,6 +72,15 @@ const shopSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "ShopAccount"
   },
+  // 是否推荐
+  isRecommended: {
+    type: Boolean,
+    default: false,
+  },
+  // 标签
+  tags: [{
+    type: String,
+  }],
   date: {
     type: Date,
     default: Date.now,

@@ -5,6 +5,7 @@ const md5 = require("blueimp-md5");
 const Shop = require("../models/Shop");
 const ShopAccount = require("../models/ShopAccount");
 const Campus = require("../models/Campus");
+var vertoken = require('../utils/token');
 
 /**
  * Helper function to check if current time is within shop business hours
@@ -76,6 +77,8 @@ router.post("/create", async (req, res) => {
       campusId, // 校区ID
       contactPhone,
       contactWechat,
+      // 标签
+      tags,
       // 商家账号信息
       username,
       email,
@@ -219,6 +222,27 @@ router.post("/create", async (req, res) => {
     shopFields.contactPhone = contactPhone;
     if (contactWechat) shopFields.contactWechat = contactWechat;
     
+    // 标签
+    if (tags && Array.isArray(tags)) {
+      // 验证标签是否存在且启用
+      const Tag = require("../models/Tag");
+      const validTags = await Tag.find({ 
+        name: { $in: tags }, 
+        status: "1" 
+      });
+      
+      if (validTags.length !== tags.length) {
+        const validTagNames = validTags.map(tag => tag.name);
+        const invalidTags = tags.filter(tag => !validTagNames.includes(tag));
+        return res.status(400).json({
+          code: 400,
+          msg: `以下标签不存在或已禁用: ${invalidTags.join(', ')}`
+        });
+      }
+      
+      shopFields.tags = tags;
+    }
+    
     // 关联商家账号
     shopFields.owner = shopAccount._id;
 
@@ -296,15 +320,16 @@ router.post("/create", async (req, res) => {
 
 /**
  * @route GET api/shop
- * @desc 获取店铺列表，支持按shopName、校区id、营业状态筛选
+ * @desc 获取店铺列表，支持按shopName、校区id、营业状态、推荐状态筛选
  * @access Public
  * @query shopName - 店铺名称（模糊查询）
  * @query campus - 校区ID
  * @query businessStatus - 营业状态（1-营业中，2-暂停营业）
+ * @query isRecommended - 推荐状态（true-推荐，false-不推荐）
  */
 router.get("/", async (req, res) => {
   try {
-    const { shopName, campus,campusId, businessStatus } = req.query;
+    const { shopName, campus,campusId, businessStatus, isRecommended } = req.query;
     
     // 构建查询条件
     let query = {};
@@ -322,6 +347,11 @@ router.get("/", async (req, res) => {
     // 按营业状态查询
     if (businessStatus) {
       query.businessStatus = businessStatus;
+    }
+    
+    // 按推荐状态查询
+    if (isRecommended !== undefined) {
+      query.isRecommended = isRecommended === 'true';
     }
     
     const shops = await Shop.find(query)
@@ -382,13 +412,23 @@ router.get("/:id", async (req, res) => {
 });
 
 /**
- * @route GET api/shop/campus/:campusId
- * @desc 根据校区ID获取店铺列表
- * @access Public
+ * @route GET api/shop/campus/byId
+ * @desc 根据token中的默认校区获取店铺列表（从token.defaultCampus读取），支持查询推荐店铺
+ * @access Private
+ * @param {string} isRecommended - 是否查询推荐店铺（可选，true/false）
  */
-router.get("/campus/:campusId", async (req, res) => {
+router.get("/campus/byId", async (req, res) => {
   try {
-    const { campusId } = req.params;
+    // 从token中获取默认校区ID
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const campusId = tokenData && tokenData.defaultCampus;
+    
+    if (!campusId) {
+      return res.status(400).json({
+        code: 400,
+        msg: "未绑定默认校区"
+      });
+    }
     
     // 验证校区是否存在
     const campus = await Campus.findById(campusId);
@@ -399,7 +439,16 @@ router.get("/campus/:campusId", async (req, res) => {
       });
     }
     
-    const shops = await Shop.find({ campus: campusId })
+    // 构建查询条件
+    const query = { campus: campusId };
+    
+    // 如果传递了isRecommended参数，添加到查询条件中
+    if (req.query.isRecommended !== undefined) {
+      const isRecommended = req.query.isRecommended === 'true';
+      query.isRecommended = isRecommended;
+    }
+    
+    const shops = await Shop.find(query)
       .populate('campus', 'campusName address location status')
       .populate('owner', 'username ownerName email phone')
       .sort({ date: -1 });
@@ -410,11 +459,21 @@ router.get("/campus/:campusId", async (req, res) => {
       data: {
         campus: campus,
         shops: shops,
-        total: shops.length
+        total: shops.length,
+        query: {
+          campusId: campusId,
+          isRecommended: req.query.isRecommended || 'all'
+        }
       }
     });
   } catch (err) {
     console.error(err.message);
+    if (err && err.error) {
+      return res.status(401).json({
+        code: 401,
+        msg: "token失效了"
+      });
+    }
     if (err.kind === "ObjectId") {
       return res.status(404).json({ 
         code: 404,
@@ -447,7 +506,8 @@ router.put("/:id", async (req, res) => {
       location,
       campusId,
       contactPhone,
-      contactWechat
+      contactWechat,
+      tags
     } = req.body;
 
     // 构建店铺对象
@@ -501,6 +561,27 @@ router.put("/:id", async (req, res) => {
     // 联系方式
     if (contactPhone) shopFields.contactPhone = contactPhone;
     if (contactWechat) shopFields.contactWechat = contactWechat;
+
+    // 标签
+    if (tags && Array.isArray(tags)) {
+      // 验证标签是否存在且启用
+      const Tag = require("../models/Tag");
+      const validTags = await Tag.find({ 
+        name: { $in: tags }, 
+        status: "1" 
+      });
+      
+      if (validTags.length !== tags.length) {
+        const validTagNames = validTags.map(tag => tag.name);
+        const invalidTags = tags.filter(tag => !validTagNames.includes(tag));
+        return res.status(400).json({
+          code: 400,
+          msg: `以下标签不存在或已禁用: ${invalidTags.join(', ')}`
+        });
+      }
+      
+      shopFields.tags = tags;
+    }
 
     // 更新店铺
     let shop = await Shop.findById(req.params.id);
@@ -641,6 +722,94 @@ router.get("/update-all-status", async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send("服务器错误");
+  }
+});
+
+/**
+ * @route PUT api/shop/:id/recommend
+ * @desc 推荐店铺
+ * @access Private
+ */
+router.put("/:id/recommend", async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.params.id);
+    
+    if (!shop) {
+      return res.status(404).json({ 
+        code: 404,
+        msg: "店铺不存在" 
+      });
+    }
+    
+    // 设置为推荐
+    shop.isRecommended = true;
+    await shop.save();
+    
+    res.json({
+      code: 200,
+      msg: "店铺推荐成功",
+      data: {
+        shopId: shop._id,
+        shopName: shop.shopName,
+        isRecommended: shop.isRecommended
+      }
+    });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ 
+        code: 404,
+        msg: "店铺不存在" 
+      });
+    }
+    res.status(500).json({
+      code: 500,
+      msg: "服务器错误"
+    });
+  }
+});
+
+/**
+ * @route PUT api/shop/:id/unrecommend
+ * @desc 取消推荐店铺
+ * @access Private
+ */
+router.put("/:id/unrecommend", async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.params.id);
+    
+    if (!shop) {
+      return res.status(404).json({ 
+        code: 404,
+        msg: "店铺不存在" 
+      });
+    }
+    
+    // 取消推荐
+    shop.isRecommended = false;
+    await shop.save();
+    
+    res.json({
+      code: 200,
+      msg: "取消推荐成功",
+      data: {
+        shopId: shop._id,
+        shopName: shop.shopName,
+        isRecommended: shop.isRecommended
+      }
+    });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ 
+        code: 404,
+        msg: "店铺不存在" 
+      });
+    }
+    res.status(500).json({
+      code: 500,
+      msg: "服务器错误"
+    });
   }
 });
 

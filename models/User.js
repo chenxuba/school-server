@@ -65,6 +65,12 @@ const userSchema = new Schema({
         type: Date,
         default: Date.now
     },
+    // 默认校区
+    defaultCampus:{
+        type: Schema.Types.ObjectId,
+        ref: 'Campus',
+        default: null
+    },
     // 创建时间
     createTime: {
         type: Date,
