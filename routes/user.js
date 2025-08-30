@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const User = require("../models/User");
+const UserAddress = require("../models/UserAddress");
 const DeliveryApplication = require("../models/DeliveryApplication");
 const Campus = require("../models/Campus");
 const { getWxUserInfo, decryptWxData, generateInviteCode, generateRandomNickname } = require('../utils/index');
@@ -877,4 +878,343 @@ router.post('/update-default-campus', async (req, res) => {
     });
   }
 });
+
+// ==================== 地址管理相关接口 ====================
+
+/**
+ * 获取用户地址列表
+ * POST /api/user/address/list
+ */
+router.post('/address/list', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    // 查询用户的所有有效地址
+    const addresses = await UserAddress.find({
+      userId: userId,
+      status: 1
+    }).sort({ isDefault: -1, createTime: -1 });
+    
+    res.json({
+      code: 200,
+      message: '获取地址列表成功',
+      data: addresses
+    });
+  } catch (error) {
+    console.error('获取地址列表失败:', error);
+    res.json({
+      code: -1,
+      message: '获取地址列表失败: ' + error.message
+    });
+  }
+});
+
+/**
+ * 添加用户地址
+ * POST /api/user/address/add
+ */
+router.post('/address/add', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const {
+      receiverName,
+      receiverPhone,
+      address,
+      label = '其他',
+      province = '',
+      city = '',
+      district = '',
+      detailAddress = '',
+      isDefault = false
+    } = req.body;
+    
+    // 参数验证
+    if (!receiverName || !receiverPhone || !address) {
+      return res.json({
+        code: -1,
+        message: '收货人姓名、手机号和地址不能为空'
+      });
+    }
+    
+    // 如果是第一个地址，自动设为默认
+    const existingAddressCount = await UserAddress.countDocuments({
+      userId: userId,
+      status: 1
+    });
+    
+    const newAddress = new UserAddress({
+      userId,
+      receiverName,
+      receiverPhone,
+      address,
+      label,
+      province,
+      city,
+      district,
+      detailAddress,
+      isDefault: existingAddressCount === 0 ? true : isDefault
+    });
+    
+    await newAddress.save();
+    
+    res.json({
+      code: 200,
+      message: '添加地址成功',
+      data: newAddress
+    });
+  } catch (error) {
+    console.error('添加地址失败:', error);
+    res.json({
+      code: -1,
+      message: '添加地址失败: ' + error.message
+    });
+  }
+});
+
+/**
+ * 编辑用户地址
+ * POST /api/user/address/edit
+ */
+router.post('/address/edit', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const {
+      addressId,
+      receiverName,
+      receiverPhone,
+      address,
+      label,
+      province,
+      city,
+      district,
+      detailAddress,
+      isDefault
+    } = req.body;
+    
+    // 参数验证
+    if (!addressId) {
+      return res.json({
+        code: -1,
+        message: '地址ID不能为空'
+      });
+    }
+    
+    // 查找地址
+    const existingAddress = await UserAddress.findOne({
+      _id: addressId,
+      userId: userId,
+      status: 1
+    });
+    
+    if (!existingAddress) {
+      return res.json({
+        code: -1,
+        message: '地址不存在或无权限修改'
+      });
+    }
+    
+    // 更新地址信息
+    const updateData = {};
+    if (receiverName !== undefined) updateData.receiverName = receiverName;
+    if (receiverPhone !== undefined) updateData.receiverPhone = receiverPhone;
+    if (address !== undefined) updateData.address = address;
+    if (label !== undefined) updateData.label = label;
+    if (province !== undefined) updateData.province = province;
+    if (city !== undefined) updateData.city = city;
+    if (district !== undefined) updateData.district = district;
+    if (detailAddress !== undefined) updateData.detailAddress = detailAddress;
+    if (isDefault !== undefined) updateData.isDefault = isDefault;
+    
+    // 更新地址
+    const updatedAddress = await UserAddress.findByIdAndUpdate(
+      addressId,
+      updateData,
+      { new: true }
+    );
+    
+    res.json({
+      code: 200,
+      message: '编辑地址成功',
+      data: updatedAddress
+    });
+  } catch (error) {
+    console.error('编辑地址失败:', error);
+    res.json({
+      code: -1,
+      message: '编辑地址失败: ' + error.message
+    });
+  }
+});
+
+/**
+ * 删除用户地址
+ * POST /api/user/address/delete
+ */
+router.post('/address/delete', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const { addressId } = req.body;
+    
+    // 参数验证
+    if (!addressId) {
+      return res.json({
+        code: -1,
+        message: '地址ID不能为空'
+      });
+    }
+    
+    // 查找地址
+    const existingAddress = await UserAddress.findOne({
+      _id: addressId,
+      userId: userId,
+      status: 1
+    });
+    
+    if (!existingAddress) {
+      return res.json({
+        code: -1,
+        message: '地址不存在或无权限删除'
+      });
+    }
+    
+    // 软删除地址
+    await UserAddress.findByIdAndUpdate(addressId, {
+      status: 0
+    });
+    
+    // 如果删除的是默认地址，需要设置新的默认地址
+    if (existingAddress.isDefault) {
+      const firstAddress = await UserAddress.findOne({
+        userId: userId,
+        status: 1,
+        _id: { $ne: addressId }
+      }).sort({ createTime: 1 });
+      
+      if (firstAddress) {
+        await UserAddress.findByIdAndUpdate(firstAddress._id, {
+          isDefault: true
+        });
+      }
+    }
+    
+    res.json({
+      code: 200,
+      message: '删除地址成功'
+    });
+  } catch (error) {
+    console.error('删除地址失败:', error);
+    res.json({
+      code: -1,
+      message: '删除地址失败: ' + error.message
+    });
+  }
+});
+
+/**
+ * 设置默认地址
+ * POST /api/user/address/set-default
+ */
+router.post('/address/set-default', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    const { addressId } = req.body;
+    
+    // 参数验证
+    if (!addressId) {
+      return res.json({
+        code: -1,
+        message: '地址ID不能为空'
+      });
+    }
+    
+    // 查找地址
+    const existingAddress = await UserAddress.findOne({
+      _id: addressId,
+      userId: userId,
+      status: 1
+    });
+    
+    if (!existingAddress) {
+      return res.json({
+        code: -1,
+        message: '地址不存在或无权限修改'
+      });
+    }
+    
+    // 先将该用户的其他地址设为非默认
+    await UserAddress.updateMany(
+      { userId: userId, _id: { $ne: addressId } },
+      { isDefault: false }
+    );
+    
+    // 设置当前地址为默认地址
+    await UserAddress.findByIdAndUpdate(addressId, {
+      isDefault: true
+    });
+    
+    res.json({
+      code: 200,
+      message: '设置默认地址成功'
+    });
+  } catch (error) {
+    console.error('设置默认地址失败:', error);
+    res.json({
+      code: -1,
+      message: '设置默认地址失败: ' + error.message
+    });
+  }
+});
+
+/**
+ * 获取默认地址
+ * POST /api/user/address/default
+ */
+router.post('/address/default', async (req, res) => {
+  try {
+    // 验证token
+    const tokenData = await vertoken.getToken(req.headers.authorization);
+    const userId = tokenData._id;
+    
+    // 查询默认地址
+    const defaultAddress = await UserAddress.findOne({
+      userId: userId,
+      status: 1,
+      isDefault: true
+    });
+    
+    if (!defaultAddress) {
+      return res.json({
+        code: -1,
+        message: '未设置默认地址'
+      });
+    }
+    
+    res.json({
+      code: 200,
+      message: '获取默认地址成功',
+      data: defaultAddress
+    });
+  } catch (error) {
+    console.error('获取默认地址失败:', error);
+    res.json({
+      code: -1,
+      message: '获取默认地址失败: ' + error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -36,6 +36,7 @@ var goodsRouter = require('./routes/goods');
 var campusRouter = require('./routes/campus');
 var tagRouter = require('./routes/tag');
 var aiRouter = require('./routes/ai');
+var orderRouter = require('./routes/order');
 
 
 var app = express();
@@ -75,6 +76,7 @@ app.use('/api/goods', goodsRouter);
 app.use('/api/campus', campusRouter);
 app.use('/api/tag', tagRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/order', orderRouter);
 
 
 // catch 404 and forward to error handler
