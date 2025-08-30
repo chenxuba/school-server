@@ -194,7 +194,13 @@ const orderSchema = new Schema({
         type: String,
         default: ''
     },
-    
+
+    // 支付超时时间
+    paymentExpireTime: {
+        type: Date,
+        default: null
+    },
+
     createTime: {
         type: Date,
         default: Date.now

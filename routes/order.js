@@ -132,6 +132,18 @@ router.post('/create', async (req, res) => {
     const orderNumber = Order.generateOrderNumber();
     
     // 创建订单对象
+    const currentTime = new Date();
+    const paymentExpireTime = new Date(currentTime.getTime() + 15 * 60 * 1000); // 15分钟后过期
+    
+    // 调试信息 - 时区对比
+    console.log('=== 订单时间信息 ===');
+    console.log('创建时间(UTC):', currentTime.toISOString());
+    console.log('创建时间(本地):', currentTime.toLocaleString('zh-CN'));
+    console.log('过期时间(UTC):', paymentExpireTime.toISOString());
+    console.log('过期时间(本地):', paymentExpireTime.toLocaleString('zh-CN'));
+    console.log('过期间隔:', (paymentExpireTime - currentTime) / (1000 * 60), '分钟');
+    console.log('==================');
+    
     const newOrder = new Order({
       orderNumber,
       userId,
@@ -146,9 +158,10 @@ router.post('/create', async (req, res) => {
       couponAmount: couponAmount || 0,
       totalAmount,
       remark: remark || '',
-      orderTime: orderTime ? new Date(orderTime) : new Date(),
+      orderTime: orderTime ? new Date(orderTime) : currentTime,
       status: 'pending',
-      paymentStatus: 'unpaid'
+      paymentStatus: 'unpaid',
+      paymentExpireTime: paymentExpireTime
     });
     
     // 保存订单到数据库
@@ -163,7 +176,8 @@ router.post('/create', async (req, res) => {
         totalAmount: savedOrder.totalAmount,
         status: savedOrder.status,
         paymentStatus: savedOrder.paymentStatus,
-        createTime: savedOrder.createTime
+        createTime: savedOrder.createTime,
+        paymentExpireTime: savedOrder.paymentExpireTime
       }
     });
     

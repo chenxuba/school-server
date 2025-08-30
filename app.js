@@ -12,6 +12,8 @@ var logger = require('morgan');
 // });
 const mongoose = require("mongoose");
 const db = require("./config/keys.js").mongoURL
+// 引入订单定时任务
+const orderScheduler = require('./utils/orderScheduler');
 mongoose.set('useCreateIndex', true) //加上这个 就不报错 DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.
 // (Use `node --trace-deprecation ...` to show where the warning was created)
 mongoose.connect(db, {
@@ -22,6 +24,9 @@ mongoose.connect(db, {
 })
     .then((res) => {
         console.log("远程数据库连接成功～～")
+        // 启动订单定时任务
+        orderScheduler.start();
+        console.log("订单定时任务已启动");
     }).catch((err) => {
         console.log(err)
     });
@@ -37,7 +42,6 @@ var campusRouter = require('./routes/campus');
 var tagRouter = require('./routes/tag');
 var aiRouter = require('./routes/ai');
 var orderRouter = require('./routes/order');
-
 
 var app = express();
 //express 设置允许跨域访问
