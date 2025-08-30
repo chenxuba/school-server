@@ -144,17 +144,11 @@ router.get("/info", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err.message);
-    if (err.error === 'token 是空的') {
-      return res.status(401).json({
+    console.error(err.error);
+    res.status(401).json({
         code: 401,
         msg: "token无效"
       });
-    }
-    res.status(500).json({
-      code: 500,
-      msg: "服务器错误"
-    });
   }
 });
 

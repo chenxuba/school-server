@@ -150,7 +150,7 @@ const orderSchema = new Schema({
     // 支付方式（支付时设置）
     paymentMethod: {
         type: String,
-        enum: ['wechat', 'alipay', 'cash']
+        enum: ['wechat','balance']
     },
     
     // 其他信息
