@@ -491,4 +491,61 @@ router.get('/shop/all', verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/goods/by-shop-id/:shopId
+ * @desc    根据店铺ID获取店铺的分类及商品列表
+ * @access  Public
+ */
+router.get('/by-shop-id/:shopId', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const { status = 1 } = req.query;
+    
+    // 验证shopId是否存在
+    if (!shopId) {
+      return res.status(400).json({ success: false, message: '请提供店铺ID' });
+    }
+
+    // 查询该店铺下的所有分类
+    const GoodsMenu = require('../models/GoodsMenu');
+    const categories = await GoodsMenu.find({ 
+      shopId,
+      isActive: true,
+      parentId: null // 只获取一级分类
+    }).sort({ sort: 1 });
+
+    // 构建结果数据
+    const result = [];
+    
+    // 对每个分类，查询其下的商品
+    for (const category of categories) {
+      // 查询该分类下的所有商品（过滤已软删除的商品）
+      const goodsList = await Goods.find({
+        shopId,
+        menuId: category._id,
+        status,
+        isDeleted: { $ne: true }
+      }).sort('-createTime');
+      
+      // 添加到结果中
+      result.push({
+        categoryId: category._id,
+        categoryName: category.name,
+        categoryDescription: category.description,
+        goods: goodsList
+      });
+    }
+    
+    res.json({
+      code: 200,
+      success: true,
+      data: result,
+      message: '获取店铺商品分类列表成功'
+    });
+  } catch (error) {
+    console.error('获取店铺商品分类列表失败:', error);
+    res.status(500).json({ success: false, message: '服务器错误，获取店铺商品分类列表失败' });
+  }
+});
+
 module.exports = router;

@@ -209,6 +209,102 @@ module.exports = {
 ```bash
 export WX_MINI_APP_ID=your_actual_app_id
 export WX_MINI_APP_SECRET=your_actual_app_secret
+export DEEPSEEK_API_KEY=your_deepseek_key
+export DEEPSEEK_BASE_URL=https://api.deepseek.com
+export DEEPSEEK_MODEL=deepseek-chat
+```
+
+## AI 接口
+
+### 接口地址
+`POST /api/ai/chat`
+
+### 请求参数
+```json
+{
+  "messages": [
+    { "role": "system", "content": "你是一个有用的助手" },
+    { "role": "user", "content": "帮我写一段欢迎词" }
+  ],
+  "model": "deepseek-chat",
+  "stream": false
+}
+```
+
+### 参数说明
+- `messages`: 对话消息数组，必需
+- `model`: 模型名称，可选，默认为 `deepseek-chat`
+- `stream`: 是否启用流式输出，可选，默认为 `false`
+
+### 非流式响应示例
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "model": "deepseek-chat",
+    "id": "cmpl-xxx",
+    "content": "欢迎使用本系统！..."
+  }
+}
+```
+
+### 流式输出
+当 `stream: true` 时，响应为纯文本流，Content-Type 为 `text/plain; charset=utf-8`
+
+### 前端调用示例
+
+#### 非流式调用
+```javascript
+fetch('/api/ai/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    messages: [
+      { role: 'user', content: '你好' }
+    ],
+    stream: false
+  })
+})
+.then(response => response.json())
+.then(data => {
+  console.log(data.data.content);
+});
+```
+
+#### 流式调用
+```javascript
+fetch('/api/ai/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    messages: [
+      { role: 'user', content: '请写一个故事' }
+    ],
+    stream: true
+  })
+})
+.then(response => {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  
+  function readStream() {
+    return reader.read().then(({ done, value }) => {
+      if (done) return;
+      
+      const chunk = decoder.decode(value);
+      console.log(chunk); // 实时输出内容
+      
+      return readStream();
+    });
+  }
+  
+  return readStream();
+});
 ```
 
 ## 数据库模型

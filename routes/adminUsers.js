@@ -6,6 +6,13 @@ const DeliveryApplication = require("../models/DeliveryApplication");
 const User = require("../models/User");
 var vertoken = require('../utils/token') //引入token 
 const mongoose = require("mongoose");
+// import OpenAI from "openai";
+
+// const openai = new OpenAI({
+//     baseURL: 'https://api.deepseek.com',
+//     apiKey: "sk-3153518fffd24b1588d7b914c388320d",
+// });
+
 function randomString (e) {
     e = e || 32;
     var t = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678",
